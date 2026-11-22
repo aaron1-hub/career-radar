@@ -170,6 +170,6 @@ document.addEventListener("change",function(e){var t=e.target,id;
 document.addEventListener("input",function(e){if(e.target.id=="fq"){f.q=e.target.value;var p=e.target.selectionStart;render();var n=document.getElementById("fq");n.focus();n.setSelectionRange(p,p)}});
 load();render();
 fetch("jobs.json?t="+Date.now()).then(function(r){return r.json()}).then(function(arr){var nw=0,du=0,hot=[];
- arr.forEach(function(r){var x=addJob(r);if(x=="dup")du++;else if(x!="skip"){nw++;if(x.score>=80)hot.push(x)}});
+ arr.forEach(function(r){var x=addJob(r);if(x=="dup")du++;else if(x!="skip"){if(x.score<60){jobs.pop()}else{nw++;if(x.score>=80)hot.push(x)}}});
  if(nw){save();finishImport(nw,du,hot)}}).catch(function(){});
 </script></body></html>

@@ -3,6 +3,23 @@ import json, os, re, urllib.request, urllib.parse, datetime
 
 TITLE_OK = re.compile(r"quantity surveyor|cost (consultant|analyst|manager|estimator|control|planner)|estimator|estimating|project controls?|commercial (analyst|coordinator|manager)|contracts? (administrator|analyst|coordinator)|preconstruction|project (coordinator|manager|analyst)|capital projects?|infrastructure|owner.?s rep|development coordinator|construction management|real estate|financial analyst|business analyst|consultant|strategy|investment analyst|project finance|valuation|transaction advisory|procurement|sourcing|supply chain|operations analyst|asset management|business development", re.I)
 TOO_SENIOR = re.compile(r"\b(senior|sr\.?|director|principal|vp|vice president|head of|chief)\b", re.I)
+WORDS = {"three":3,"four":4,"five":5,"six":6,"seven":7,"eight":8,"nine":9,"ten":10}
+YEARS = re.compile(r"(\d+|three|four|five|six|seven|eight|nine|ten)\s*\+?\s*(?:-|to|–)?\s*(?:\d+)?\s*\+?\s*(?:\(\d+\)\s*)?years?", re.I)
+JUNIORISH = re.compile(r"assistant|junior|jr\.?|associate|graduate|trainee|coordinator|intern|entry|analyst", re.I)
+
+def min_years(text):
+    vals = []
+    for m in YEARS.finditer(text or ""):
+        w = m.group(1).lower()
+        vals.append(WORDS.get(w, int(w) if w.isdigit() else 0))
+    return max(vals) if vals else 0
+
+def too_experienced(j):
+    t = j["title"]
+    if re.search(r"\b(ii|iii|iv|lead|staff)\b", t, re.I): return True
+    if re.search(r"\bmanager\b", t, re.I) and not JUNIORISH.search(t): return True
+    return min_years(j.get("description", "")) >= 4
+
 LOC_OK = re.compile(r"toronto|ontario|, on\b|mississauga|markham|vancouver|burnaby|british columbia|, bc\b|calgary|alberta|, ab\b|new york|, ny\b|canada|united states|remote", re.I)
 
 # Company job-board tokens. Not all are verified: the log shows which ones worked.
@@ -15,7 +32,9 @@ ADZUNA_QUERIES = ["quantity surveyor", "cost consultant", "cost analyst", "const
   "project controls analyst", "commercial analyst", "contracts administrator", "assistant project manager",
   "project coordinator construction", "capital projects analyst", "infrastructure analyst",
   "real estate analyst", "financial analyst infrastructure", "transaction advisory analyst",
-  "procurement analyst construction", "preconstruction analyst"]
+  "procurement analyst construction", "preconstruction analyst",
+  "junior quantity surveyor", "graduate cost consultant", "entry level estimator", "junior project controls",
+  "graduate analyst infrastructure", "junior commercial analyst"]
 ADZUNA_PLACES = [("ca", "Toronto"), ("ca", "Vancouver"), ("ca", "Calgary"), ("us", "New York")]
 
 def get(url):
@@ -82,7 +101,7 @@ def main():
     raw = adzuna() + greenhouse() + lever()
     seen, keep = set(), []
     for j in raw:
-        if not j["title"] or not TITLE_OK.search(j["title"]) or TOO_SENIOR.search(j["title"]): continue
+        if not j["title"] or not TITLE_OK.search(j["title"]) or TOO_SENIOR.search(j["title"]) or too_experienced(j): continue
         if not LOC_OK.search(j.get("location", "")): continue
         k = j["url"] or (j["title"] + j["company"] + j["location"]).lower()
         if k in seen: continue
