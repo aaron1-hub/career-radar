@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Career Radar</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#14181f;--mut:#667085;--bd:#e3e6eb;--ac:#1d4ed8;--ok:#15803d;--warn:#b45309;--bad:#b91c1c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1318;--card:#171c24;--tx:#e8ebf0;--mut:#9aa3b2;--bd:#2a313c;--ac:#6ea0ff;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171}}
+:root[data-theme="dark"]{--bg:#0f1318;--card:#171c24;--tx:#e8ebf0;--mut:#9aa3b2;--bd:#2a313c;--ac:#6ea0ff;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:16px 20px 0;max-width:1200px;margin:auto}h1{margin:0;font-size:20px}h1 span{color:var(--mut);font-weight:400;font-size:13px;margin-left:8px}
+nav{display:flex;gap:4px;flex-wrap:wrap;margin-top:12px;border-bottom:1px solid var(--bd)}
+nav button{background:none;border:0;padding:9px 14px;color:var(--mut);cursor:pointer;font:inherit;border-bottom:2px solid transparent}
+nav button.on{color:var(--ac);border-color:var(--ac);font-weight:600}
+main{max-width:1200px;margin:auto;padding:16px 20px 60px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}
+input,select,textarea,button.b{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:7px;padding:7px 10px}
+textarea{width:100%;min-height:130px;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+button.b{cursor:pointer}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+@media(prefers-color-scheme:dark){button.p{color:#0b1020}}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{min-width:0}
+.chip{border:1px solid var(--bd);border-radius:99px;padding:4px 11px;cursor:pointer;background:var(--card);font-size:13px}.chip.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+@media(prefers-color-scheme:dark){.chip.on{color:#0b1020}}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:760px}
+th{text-align:left;font-size:12px;color:var(--mut);padding:8px;border-bottom:1px solid var(--bd);cursor:pointer;white-space:nowrap}
+td{padding:9px 8px;border-bottom:1px solid var(--bd);vertical-align:top}tr.j{cursor:pointer}tr.j:hover td{background:var(--bg)}
+.sc{display:inline-block;min-width:38px;text-align:center;font-weight:700;border-radius:7px;padding:3px 6px;border:1px solid currentColor}
+.s9{color:var(--ok)}.s8{color:var(--ok)}.s7{color:var(--ac)}.s6{color:var(--warn)}.s0{color:var(--bad)}
+.mut{color:var(--mut)}.sm{font-size:12px}.det td{background:var(--bg)}.det ul{margin:4px 0 8px 18px;padding:0}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+#toast{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--tx);color:var(--bg);padding:10px 14px;border-radius:8px;display:none;max-width:320px;z-index:5}
+a{color:var(--ac)}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}.grid a{display:block;border:1px solid var(--bd);border-radius:8px;padding:9px 11px;text-decoration:none;background:var(--card)}
+</style></head><body>
+<header><h1>Career Radar<span>cost, commercial &amp; infrastructure roles · Canada &amp; US</span></h1>
+<nav id="nav"></nav></header>
+<main id="app"></main><div id="toast"></div>
+<script>
+var KEY="careerradar.v1",jobs=[],view="all",f={q:"",region:"All",min:0,status:"All"},sortBy="score",open={};
+var STAT=["New","Interested","Applied","Interviewing","Rejected"];
+function load(){try{jobs=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){jobs=[]}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(jobs))}catch(e){toast("Couldn’t save to browser storage")}}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function norm(s){return String(s||"").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\b(inc|ltd|llc|corp|corporation|limited|the)\b/g,"").replace(/\s+/g," ").trim()}
+function toast(m){var t=document.getElementById("toast");t.textContent=m;t.style.display="block";clearTimeout(toast.h);toast.h=setTimeout(function(){t.style.display="none"},5000)}
+
+/* ---------- scoring engine ---------- */
+var T1=/quantity surveyor|cost (consultant|analyst|manager|estimator|control|planner)|estimator|estimating|project controls?|commercial (analyst|coordinator|manager)|contracts? (administrator|analyst|coordinator)|preconstruction|pre-construction/i;
+var T2=/project (coordinator|manager|analyst)|capital projects?|infrastructure (advisory|analyst|consultant|project)|owner.?s rep|development coordinator|construction management/i;
+var T3=/real estate|financial analyst|business analyst|management consultant|strategy|investment analyst|project finance|valuation|transaction advisory|procurement|sourcing|supply chain|operations analyst|asset management|business development|facilities development/i;
+var COS=["turner construction","turner & townsend","turner and townsend","pcl","ellisdon","ledcor","graham","pomerleau","chandos","bird construction","kiewit","aecom","atkinsr","wsp","jacobs","stantec","linesight","currie","altus","rider levett","rlb","colliers","jll","jones lang","cbre","arcadis","deloitte","ey","ernst","kpmg","pwc","accenture","mckinsey","bcg","boston consulting","bain","oliver wyman","brookfield","infrastructure ontario","canada infrastructure bank","teachers","omers","cpp investments","aimco","cadillac fairview","oxford properties","bentallgreenoak","metro vancouver"];
+var DESC=/budget|cost (plan|report|control|estimat)|forecast|procure|tender|bid|contract|commercial|change order|cash ?flow|financial|excel|valuation|takeoff|take-off|pricing|variance|risk register|business case|stakeholder/gi;
+function region(loc){var l=" "+String(loc||"").toLowerCase()+" ";
+ if(/toronto|gta|mississauga|markham|brampton|oakville|vaughan|ontario|, on\b/.test(l))return"Toronto";
+ if(/vancouver|burnaby|surrey|richmond|lower mainland|british columbia|, bc\b|north van/.test(l))return"Vancouver";
+ if(/calgary|alberta|, ab\b/.test(l))return"Calgary";
+ if(/new york|, ny\b|brooklyn|manhattan|usa|united states|, us\b|, [a-z]{2}\b(?!.*canada)|chicago|boston|seattle|houston|dallas|los angeles|san francisco|washington/.test(l)&&!/canada/.test(l))return"US";
+ return"Other"}
+function score(j){var t=j.title||"",d=(j.desc||"")+" "+(j.exp||""),why=[],cons=[],s=25,tp=0;
+ if(T1.test(t)){tp=34;why.push("Title sits in your top-priority cost / commercial / estimating family")}
+ else if(T2.test(t)){tp=28;why.push("Project management / infrastructure role that builds on your Metro Vancouver experience")}
+ else if(T3.test(t)){tp=26;why.push("Business, finance or real-estate role with a strong exit path into advisory work")}
+ else{cons.push("Title doesn’t match your target categories")}
+ s+=tp;
+ var m=(d.match(DESC)||[]),u={};m.forEach(function(x){u[x.toLowerCase()]=1});var n=Object.keys(u).length;
+ if(n){s+=Math.min(14,n*2);why.push("Responsibilities mention "+Object.keys(u).slice(0,5).join(", ")+" — matches your Pomerleau estimating work")}
+ else if(j.desc){cons.push("Description shows little cost / budget / contract content")}
+ else cons.push("No description supplied, so score relies on title only");
+ var L=(t+" "+d).toLowerCase();
+ if(/graduate|new grad|entry|junior|assistant|intern|co-?op|early career|associate|analyst i\b/.test(L)){s+=8;why.push("Early-career friendly")}
+ if(/\b(senior|sr\.|director|principal|vp|vice president|head of|lead)\b/.test(t.toLowerCase())||/\bmanager\b/.test(t.toLowerCase())&&!/project manager|assistant|junior|associate/.test(t.toLowerCase())){s-=20;cons.push("Title looks senior / managerial")}
+ var ys=[];(d.match(/(\d+)\s*\+?\s*(?:-|to|–)?\s*(\d+)?\s*(?:\+)?\s*years?/gi)||[]).forEach(function(x){var k=x.match(/\d+/g).map(Number);ys.push(Math.min.apply(null,k))});
+ if(ys.length){var y=Math.max.apply(null,ys);
+  if(y<=2){s+=4;why.push("Experience ask (≤2 yrs) fits your internships")}
+  else if(y==3){s-=4;cons.push("Asks 3 years — a stretch, though co-op + 3 internships may count")}
+  else{s-=15;cons.push("Asks "+y+"+ years of experience")}}
+ var tech=/structural design|geotechnical design|drafting|autocad|revit modeling|design engineer|engineering calculations|detailed design|p\.?eng required|pe license/gi,tm=(L.match(tech)||[]);
+ if(tm.length){s-=Math.min(24,tm.length*6);cons.push("Technical design content ("+tm.slice(0,3).join(", ")+") — what you want to avoid")}
+ var co=(j.company||"").toLowerCase();
+ if(COS.some(function(c){return co.indexOf(c)>-1})){s+=6;why.push("Established target employer")}
+ var r=region(j.location);
+ if(r!="Other"){s+=5;why.push("Preferred location ("+r+")")}else cons.push("Outside your preferred cities");
+ if(r=="US")cons.push("US role: check employer’s history with Canadian grads; TN eligibility depends on the job fitting a TN profession (engineer, management consultant, etc.) — not automatic");
+ if(j.salary){s+=2}
+ return{score:Math.max(0,Math.min(100,Math.round(s))),why:why,cons:cons,region:r}}
+
+/* ---------- data ---------- */
+function addJob(raw){var j={id:"j"+Date.now()+Math.random().toString(36).slice(2,6),title:(raw.title||"").trim(),company:(raw.company||"").trim(),location:(raw.location||"").trim(),salary:(raw.salary||"").trim(),exp:(raw.experience||raw.exp||"").trim(),posted:(raw.posted||"").trim(),deadline:(raw.deadline||"").trim(),url:(raw.url||"").trim(),source:(raw.source||"Manual").trim(),desc:(raw.description||raw.desc||"").trim(),status:"New",notes:"",added:new Date().toISOString().slice(0,10)};
+ if(!j.title||!j.company)return"skip";
+ var key=norm(j.title)+"|"+norm(j.company)+"|"+norm(j.location.split(",")[0]);
+ var dup=jobs.some(function(x){return(j.url&&x.url==j.url)||(norm(x.title)+"|"+norm(x.company)+"|"+norm(x.location.split(",")[0]))==key});
+ if(dup)return"dup";var sc=score(j);j.score=sc.score;j.why=sc.why;j.cons=sc.cons;j.region=sc.region;jobs.push(j);return j}
+function parseCSV(t){var rows=[],r=[],c="",q=false;for(var i=0;i<t.length;i++){var ch=t[i];
+ if(q){if(ch=='"'&&t[i+1]=='"'){c+='"';i++}else if(ch=='"')q=false;else c+=ch}
+ else if(ch=='"')q=true;else if(ch==","){r.push(c);c=""}else if(ch=="\n"||ch=="\r"){if(ch=="\r"&&t[i+1]=="\n")i++;r.push(c);c="";if(r.join("")!="")rows.push(r);r=[]}else c+=ch}
+ r.push(c);if(r.join("")!="")rows.push(r);if(!rows.length)return[];var h=rows[0].map(function(x){return x.trim().toLowerCase()});
+ return rows.slice(1).map(function(r){var o={};h.forEach(function(k,i){o[k]=r[i]});return o})}
+function doImport(){var t=document.getElementById("imp").value.trim(),arr=[];if(!t)return;
+ try{arr=t[0]=="["||t[0]=="{"?[].concat(JSON.parse(t)):parseCSV(t)}catch(e){toast("Couldn’t read that — use JSON or CSV with a header row");return}
+ var nw=0,du=0,hot=[];arr.forEach(function(r){var x=addJob(r);if(x=="dup")du++;else if(x!="skip"){nw++;if(x.score>=80)hot.push(x)}});
+ save();finishImport(nw,du,hot);document.getElementById("imp").value=""}
+function finishImport(nw,du,hot){var m=nw+" added, "+du+" duplicates skipped"+(hot.length?" · "+hot.length+" strong match"+(hot.length>1?"es":"")+" (80+)":"");toast(m);
+ try{if(hot.length&&window.Notification){var go=function(){new Notification("Career Radar",{body:hot.length+" new 80+ match: "+hot[0].title+" at "+hot[0].company})};
+  if(Notification.permission=="granted")go();else if(Notification.permission!="denied")Notification.requestPermission().then(function(p){if(p=="granted")go()})}}catch(e){}
+ if(nw){view="all";render()}}
+function quickAdd(){var g=function(i){return document.getElementById(i).value},o={title:g("q_t"),company:g("q_c"),location:g("q_l"),salary:g("q_s"),experience:g("q_e"),url:g("q_u"),source:g("q_src")||"Manual",posted:g("q_p"),deadline:g("q_d"),description:g("q_desc")};
+ var x=addJob(o);if(x=="skip")return toast("Title and company are required");if(x=="dup")return toast("Already in your database");save();finishImport(1,0,x.score>=80?[x]:[])}
+
+/* ---------- views ---------- */
+function visible(){var q=f.q.toLowerCase();return jobs.filter(function(j){
+ if(view=="saved"&&j.status=="New")return false;
+ if(f.region!="All"&&j.region!=f.region)return false;if(j.score<f.min)return false;
+ if(f.status!="All"&&j.status!=f.status)return false;
+ if(q&&(j.title+" "+j.company+" "+j.location+" "+j.source+" "+j.desc).toLowerCase().indexOf(q)<0)return false;return true})
+ .sort(function(a,b){return sortBy=="score"?b.score-a.score:String(a[sortBy]).localeCompare(String(b[sortBy]))})}
+function sc(n){return"s"+(n>=90?9:n>=80?8:n>=70?7:n>=60?6:0)}
+function listView(){var v=visible(),regs=["All","Toronto","Vancouver","Calgary","US","Other"],h="";
+ var cnt={};STAT.forEach(function(s){cnt[s]=jobs.filter(function(j){return j.status==s}).length});
+ h+='<div class="card"><div class="row"><input id="fq" placeholder="Search title, company, keyword…" value="'+esc(f.q)+'" style="flex:1;min-width:180px">';
+ h+='<select id="fmin"><option value="0">Any score</option>'+[60,70,80,90].map(function(n){return'<option value="'+n+'"'+(f.min==n?" selected":"")+'>'+n+"+ score</option>"}).join("")+"</select>";
+ h+='<select id="fst"><option>All</option>'+STAT.map(function(s){return"<option"+(f.status==s?" selected":"")+">"+s+"</option>"}).join("")+"</select></div>";
+ h+='<div class="row" style="margin-top:10px">'+regs.map(function(r){return'<span class="chip'+(f.region==r?" on":"")+'" data-reg="'+r+'">'+r+" ("+jobs.filter(function(j){return(view!="saved"||j.status!="New")&&(r=="All"||j.region==r)}).length+")</span>"}).join("")+"</div>";
+ h+='<div class="sm mut" style="margin-top:8px">'+STAT.map(function(s){return s+": <b>"+cnt[s]+"</b>"}).join(" · ")+"</div></div>";
+ if(!jobs.length)return h+'<div class="card">Your database is empty. Go to <b>Find jobs</b> to open pre-built searches across LinkedIn, Indeed, Glassdoor, Google Jobs, Eluta, Greenhouse, Lever and Workday, then bring postings into <b>Add / import</b>. Each one is scored, de-duplicated and saved here.</div>';
+ h+='<div class="card tw"><table><thead><tr><th data-s="score">Score</th><th data-s="title">Role</th><th data-s="location">Location</th><th data-s="salary">Salary</th><th data-s="status">Status</th><th></th></tr></thead><tbody>';
+ v.forEach(function(j){h+='<tr class="j" data-id="'+j.id+'"><td><span class="sc '+sc(j.score)+'">'+j.score+'</span></td><td><b>'+esc(j.title)+'</b><div class="mut sm">'+esc(j.company)+" · "+esc(j.source)+'</div></td><td>'+esc(j.location)+'</td><td>'+esc(j.salary||"—")+'</td><td><select data-st="'+j.id+'">'+STAT.map(function(s){return"<option"+(j.status==s?" selected":"")+">"+s+"</option>"}).join("")+"</select></td><td>"+(j.url?'<a href="'+esc(j.url)+'" target="_blank" rel="noopener">Apply ↗</a>':"")+"</td></tr>";
+  if(open[j.id])h+='<tr class="det"><td></td><td colspan="5"><b class="ok">Why you fit</b><ul>'+j.why.map(function(x){return"<li>"+esc(x)+"</li>"}).join("")+'</ul><b class="bad">Drawbacks</b><ul>'+(j.cons.length?j.cons:["None flagged"]).map(function(x){return"<li>"+esc(x)+"</li>"}).join("")+'</ul><div class="sm mut">Experience: '+esc(j.exp||"—")+" · Posted: "+esc(j.posted||"—")+" · Deadline: "+esc(j.deadline||"—")+" · Added: "+j.added+'</div><div class="row" style="margin-top:8px"><input data-note="'+j.id+'" placeholder="Notes" value="'+esc(j.notes)+'" style="flex:1"><button class="b" data-del="'+j.id+'">Delete</button></div></td></tr>'});
+ return h+"</tbody></table>"+(v.length?"":'<p class="mut">No jobs match these filters.</p>')+"</div>"}
+function enc(s){return encodeURIComponent(s)}
+var PRESET=["Quantity Surveyor","Cost Consultant","Cost Analyst","Construction Estimator","Project Controls Analyst","Commercial Analyst","Contracts Administrator","Assistant Project Manager","Project Coordinator","Capital Projects Analyst","Infrastructure Advisory Analyst","Real Estate Analyst","Financial Analyst infrastructure","Transaction Advisory Analyst","Procurement Analyst","Owner’s Representative"];
+var CITY={Toronto:"Toronto, ON",Vancouver:"Vancouver, BC",Calgary:"Calgary, AB","New York":"New York, NY",Canada:"Canada"};
+var COLIST=["Turner & Townsend","Linesight","Currie & Brown","Altus Group","Rider Levett Bucknall","Arcadis","AECOM","PCL","EllisDon","Ledcor","Graham","Chandos","Bird Construction","Kiewit","WSP","Stantec","AtkinsRéalis","Jacobs","Colliers Project Leaders","JLL","CBRE","Deloitte","KPMG","EY","PwC","Brookfield","Infrastructure Ontario","Canada Infrastructure Bank","OMERS","CPP Investments","AIMCo","Cadillac Fairview","Oxford Properties","BentallGreenOak"];
+var fq={q:"Quantity Surveyor",c:"Toronto"};
+function findView(){var q=fq.q,cty=CITY[fq.c],us=fq.c=="New York",h='<div class="card"><b>Run a search</b><p class="mut sm" style="margin:4px 0 10px">Pick a role and city. Each button opens a ready-made search in a new tab. Copy interesting postings into <b>Add / import</b>; they get scored and de-duplicated automatically.</p><div class="row"><input id="fqq" value="'+esc(q)+'" style="flex:1;min-width:200px"><select id="fpre"><option value="">Presets…</option>'+PRESET.map(function(p){return"<option>"+p+"</option>"}).join("")+'</select><select id="fcity">'+Object.keys(CITY).map(function(c){return"<option"+(fq.c==c?" selected":"")+">"+c+"</option>"}).join("")+"</select></div></div>";
+ var G=function(x){return"https://www.google.com/search?q="+enc(x)};
+ var L=[["LinkedIn","https://www.linkedin.com/jobs/search/?keywords="+enc(q)+"&location="+enc(cty)+"&f_E=1%2C2"],["Indeed",(us?"https://www.indeed.com":"https://ca.indeed.com")+"/jobs?q="+enc(q)+"&l="+enc(cty)],["Glassdoor",(us?"https://www.glassdoor.com":"https://www.glassdoor.ca")+"/Job/jobs.htm?sc.keyword="+enc(q)+"&locKeyword="+enc(cty)],["Google Jobs",G(q+" jobs "+cty)+"&ibp=htl;jobs"],["Eluta (Canadian employer sites)","https://www.eluta.ca/search?q="+enc(q)+"&l="+enc(cty)],["Job Bank Canada","https://www.jobbank.gc.ca/jobsearch/jobsearch?searchstring="+enc(q)+"&locationstring="+enc(cty)],["Greenhouse boards (not on LinkedIn)",G("site:boards.greenhouse.io "+q+" "+cty)],["Lever boards (not on LinkedIn)",G("site:jobs.lever.co "+q+" "+cty)],["Workday portals (not on LinkedIn)",G("site:myworkdayjobs.com "+q+" "+cty)],["Graduate / new-grad programs",G(q+" graduate program new grad 2026 "+cty)],["Public sector",G(q+" infrastructure agency government careers "+cty)],["Specialist sites (Altus, RLB, T&T…)",G(q+" cost consultant careers "+cty+" site:careers OR site:jobs")]];
+ h+='<div class="card"><b>Job boards &amp; hidden sources</b><div class="grid" style="margin-top:10px">'+L.map(function(x){return'<a href="'+esc(x[1])+'" target="_blank" rel="noopener">'+esc(x[0])+" ↗</a>"}).join("")+"</div></div>";
+ h+='<div class="card"><b>Target employers’ career pages</b> <span class="mut sm">(searches their own site, not LinkedIn)</span><div class="grid" style="margin-top:10px">'+COLIST.map(function(c){return'<a href="'+G(c+" careers "+q+" "+cty)+'" target="_blank" rel="noopener">'+esc(c)+" ↗</a>"}).join("")+"</div></div>";return h}
+function addView(){var fl=[["q_t","Job title"],["q_c","Company"],["q_l","Location (City, Prov/State)"],["q_s","Salary"],["q_e","Experience required"],["q_u","Posting URL"],["q_src","Source (e.g. Lever)"],["q_p","Date posted"],["q_d","Deadline"]];
+ return'<div class="card"><b>Add one posting</b><div class="grid" style="margin:10px 0">'+fl.map(function(x){return'<input id="'+x[0]+'" placeholder="'+x[1]+'">'}).join("")+'</div><textarea id="q_desc" placeholder="Paste the full job description here — the scorer reads responsibilities, not just the title"></textarea><div style="margin-top:8px"><button class="b p" data-act="quick">Score &amp; save</button></div></div>'+
+ '<div class="card"><b>Bulk import</b><p class="mut sm" style="margin:4px 0 8px">Paste a JSON array or CSV with a header row. Columns: title, company, location, salary, experience, posted, deadline, url, source, description.</p><textarea id="imp"></textarea><div class="row" style="margin-top:8px"><button class="b p" data-act="imp">Import</button></div></div>'+
+ '<div class="card"><b>Backup &amp; restore</b><p class="mut sm" style="margin:4px 0 8px">Your database lives in this browser. Copy the backup text somewhere safe, or paste an earlier backup into Bulk import.</p><button class="b" data-act="bak">Show backup (JSON)</button></div>'}
+function exportView(){return'<div class="card"><b>Export</b><p class="mut sm">Exports the jobs currently matching your filters (All jobs tab). Open the CSV in Excel, or copy the text and paste straight into a spreadsheet.</p><div class="row"><button class="b p" data-act="csv">Generate CSV</button><button class="b" data-act="copy">Copy</button></div><textarea id="exp" style="margin-top:10px" placeholder="Export text appears here"></textarea><div id="dl"></div></div>'}
+function buildCSV(list,tab){var cols=["score","title","company","location","region","salary","exp","posted","deadline","url","source","status","why","cons","notes"];
+ var q=function(x){return'"'+String(x==null?"":Array.isArray(x)?x.join("; "):x).replace(/"/g,'""')+'"'};
+ return cols.join(tab?"\t":",")+"\n"+list.map(function(j){return cols.map(function(c){return tab?String(Array.isArray(j[c])?j[c].join("; "):j[c]==null?"":j[c]).replace(/[\t\n]/g," "):q(j[c])}).join(tab?"\t":",")}).join("\n")}
+function render(){var N=[["all","All jobs"],["saved","Saved & tracker"],["find","Find jobs"],["add","Add / import"],["export","Export"]];
+ document.getElementById("nav").innerHTML=N.map(function(n){return'<button class="'+(view==n[0]?"on":"")+'" data-v="'+n[0]+'">'+n[1]+"</button>"}).join("");
+ var a=document.getElementById("app");a.innerHTML=view=="find"?findView():view=="add"?addView():view=="export"?exportView():listView()}
+
+/* ---------- events ---------- */
+document.addEventListener("click",function(e){var t=e.target,d=function(k){var n=t.closest("["+k+"]");return n?n.getAttribute(k):null};
+ if(t.matches("select,input,textarea,a"))return;var v;
+ if(v=d("data-v")){view=v;render();return}
+ if(v=d("data-reg")){f.region=v;render();return}
+ if(v=d("data-s")){sortBy=v;render();return}
+ if(v=d("data-del")){jobs=jobs.filter(function(j){return j.id!=v});save();render();return}
+ if(v=d("data-act")){
+  if(v=="quick")quickAdd();else if(v=="imp")doImport();
+  else if(v=="bak"){var b=document.getElementById("imp");b.value=JSON.stringify(jobs.map(function(j){return{title:j.title,company:j.company,location:j.location,salary:j.salary,experience:j.exp,posted:j.posted,deadline:j.deadline,url:j.url,source:j.source,description:j.desc}}));toast("Backup shown in the Bulk import box — copy it")}
+  else if(v=="csv"){var txt=buildCSV(visible(),false);document.getElementById("exp").value=txt;try{var u=URL.createObjectURL(new Blob([txt],{type:"text/csv"}));document.getElementById("dl").innerHTML='<p><a download="career-radar-jobs.csv" href="'+u+'">Download CSV</a> <span class="mut sm">(if the download is blocked, use Copy and paste into Excel)</span></p>'}catch(x){}}
+  else if(v=="copy"){var tx=buildCSV(visible(),true);document.getElementById("exp").value=tx;try{navigator.clipboard.writeText(tx).then(function(){toast("Copied — paste into Excel")},function(){toast("Select the text and copy manually")})}catch(x){toast("Select the text and copy manually")}}
+  return}
+ var r=t.closest("tr.j");if(r){var id=r.getAttribute("data-id");open[id]=!open[id];render()}});
+document.addEventListener("change",function(e){var t=e.target,id;
+ if(t.id=="fmin"){f.min=+t.value;render()}else if(t.id=="fst"){f.status=t.value;render()}
+ else if(id=t.getAttribute("data-st")){jobs.forEach(function(j){if(j.id==id)j.status=t.value});save();render()}
+ else if(id=t.getAttribute("data-note")){jobs.forEach(function(j){if(j.id==id)j.notes=t.value});save()}
+ else if(t.id=="fpre"&&t.value){fq.q=t.value;render()}else if(t.id=="fcity"){fq.c=t.value;render()}
+ else if(t.id=="fqq"){fq.q=t.value;render()}});
+document.addEventListener("input",function(e){if(e.target.id=="fq"){f.q=e.target.value;var p=e.target.selectionStart;render();var n=document.getElementById("fq");n.focus();n.setSelectionRange(p,p)}});
+load();render();
+fetch("jobs.json?t="+Date.now()).then(function(r){return r.json()}).then(function(arr){var nw=0,du=0,hot=[];
+ arr.forEach(function(r){var x=addJob(r);if(x=="dup")du++;else if(x!="skip"){nw++;if(x.score>=80)hot.push(x)}});
+ if(nw){save();finishImport(nw,du,hot)}}).catch(function(){});
+</script></body></html>
